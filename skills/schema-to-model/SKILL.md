@@ -13,6 +13,20 @@ extractor, transformer, loader, dbt models, or migrations. The only other files 
 may open are the target model file (if it already exists) and
 `db/src/models/etl/__init__.py`.
 
+Once the schema and column mapping are resolved, this task is fully mechanical:
+write the model file and update `__init__.py` directly with the Edit/Write tools.
+Do not ask the user for confirmation before writing — invoking this skill is the
+user's authorization to make the change. Only stop and ask when a step below
+explicitly says to stop and ask (e.g. ambiguous schema, ambiguous SRID).
+
+Always produce a complete model class, even when something is unresolved (an
+unclear dtype, an ambiguous SRID pick a best guess and flag it, an unclear primary
+key, etc.) — never block Step 5 waiting for an answer. Every model must have a
+primary key: if no column clearly qualifies as a natural key, add a surrogate
+auto-incremented `id` column instead of leaving the model without one (see Step 4).
+Note unresolved points in the Step 7 report as clarifying questions and revise the
+file after the user answers, instead of withholding the first draft.
+
 Argument: `$ARGUMENTS` is the path to the schemas.py file. If missing, ask for it.
 
 ## Step 1 – pick the schema
@@ -99,10 +113,24 @@ polygon_wgs84: Mapped[Polygon] = mapped_column(
 
 Choose the column that has `unique=True` **and** is not nullable. If several qualify,
 prefer the one whose name ends in `_id`. Mark it
-`mapped_column(<type>, primary_key=True, unique=True)`. If no column qualifies, stop
-and ask the user which column is the primary key. Never invent a surrogate `id`.
+`mapped_column(<type>, primary_key=True, unique=True)`.
+
+If no column in the schema clearly qualifies as a unique, non-nullable key, do not
+stop and do not leave the model without a primary key — add a surrogate
+auto-incremented `id` column instead:
+
+```python
+id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True, autoincrement=True)
+```
+
+Place it first in the class, ahead of every other column. Note in the Step 7 report
+that a surrogate key was added because no unique column could be determined from
+the schema.
 
 ## Step 5 – write the class
+
+Use the Edit/Write tool to write this directly into the target file now. Do not
+ask for permission first and do not pause before Step 6.
 
 Style rules (mandatory):
 
@@ -172,7 +200,8 @@ latest_case_id: Mapped[Optional[int]] = mapped_column(sa.BigInteger, nullable=Tr
 
 ## Step 6 – register in `__init__.py`
 
-Edit `db/src/models/etl/__init__.py`:
+Use the Edit tool now, without asking for confirmation, on
+`db/src/models/etl/__init__.py`:
 
 1. Add `from .<entity> import <ClassName>` in alphabetical order by module. If the
    module is already imported, add the class to that import line (alphabetical inside
@@ -183,6 +212,10 @@ If the class is already present in both places, leave the file untouched.
 
 ## Step 7 – report
 
-Do not run anything. Reply with the target file path, the class name, the primary
-key column, and any `# TODO: confirm dtype` columns or SRID lookups you could not
-resolve. Do not create an Alembic migration; that is a separate step.
+The files are already written from Steps 5-6. Do not execute anything (no Python,
+no tests, no formatter) — "do not run" refers to scripts, not the edits
+themselves. Reply with the target file path, the class name, the primary key
+column (or that a surrogate `id` was added because none could be determined), and
+any `# TODO: confirm dtype` columns or SRID lookups as clarifying questions you
+could not resolve — offer to revise the draft once the user answers. Do not create
+an Alembic migration; that is a separate step.

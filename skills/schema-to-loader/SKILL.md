@@ -20,6 +20,13 @@ You may open only these files:
 Do **not** read the extractor, transformer, flow, dbt models, migrations, or any
 other pipeline's loader.
 
+Once the model is located, this task is fully mechanical: write loader.py directly
+with the Edit/Write tool. Do not ask the user for confirmation before writing —
+invoking this skill is the user's authorization to make the change. Only stop and
+ask when a step below explicitly says to stop and ask or stop and report (e.g. no
+model found, several `*TransformedSchema` candidates, existing loader.py with
+extra code).
+
 ## The output is fixed. There is no room for creativity.
 
 The generated file is **exactly** this, with only the four placeholders substituted:
@@ -125,11 +132,13 @@ fixed output from Step 4:
 ## Step 4 – write the file
 
 Target path: the directory containing the schemas.py, file name `loader.py`.
-Substitute the placeholders into the fixed template above. Nothing else.
+Substitute the placeholders into the fixed template above. Nothing else. Use the
+Edit/Write tool to write it now, without asking for permission first.
 
 ## Step 5 – report
 
-Do not run anything (no Python, no tests, no formatter). Reply with:
+The file is already written from Step 4. Do not execute anything (no Python, no
+tests, no formatter). Reply with:
 
 - the written (or unchanged) loader.py path
 - the model class and which lookup found it (path name / table name / column match)
